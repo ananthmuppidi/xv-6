@@ -75,10 +75,36 @@ usertrap(void)
 
   if(killed(p))
     exit(-1);
+//
+//  #ifdef RR
+//  printf("round robin");
+//  #endif
+//
+//
+//  #ifdef PBS
+//  printf("PBS");
+//  #endif
+
+
 
   // give up the CPU if this is a timer interrupt.
+  // all the schedulers that are preeemptive are listed here and preemption is enabled for them
+
+  #ifdef RR
   if(which_dev == 2)
     yield();
+  #endif
+
+  #ifdef LBS
+  if(which_dev == 2)
+    yield();
+  #endif
+
+  #ifdef MLFQ
+  if(which_dev == 2)
+    yield();
+  #endif
+
 
   usertrapret();
 }

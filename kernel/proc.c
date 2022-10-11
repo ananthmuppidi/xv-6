@@ -6,6 +6,8 @@
 #include "proc.h"
 #include "defs.h"
 
+#define NULL 0
+
 struct cpu cpus[NCPU];
 
 struct proc proc[NPROC];
@@ -145,6 +147,10 @@ found:
   memset(&p->context, 0, sizeof(p->context));
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
+
+
+  p->tickets = 1;
+  p->invokeTime = ticks;
 
   return p;
 }
@@ -295,6 +301,8 @@ fork(void)
     return -1;
   }
   np->sz = p->sz;
+  np->tickets = p->tickets; // when a child process is spawned from a parent process, it must have the same number of tickets as the parent process.
+
 
   // copy saved user registers.
   *(np->trapframe) = *(p->trapframe);
@@ -441,6 +449,41 @@ wait(uint64 addr)
 //  - swtch to start running that process.
 //  - eventually that process transfers control
 //    via swtch back to the scheduler.
+
+
+ int do_rand(unsigned long *ctx)
+        {
+        /*
+         * Compute x = (7^5 * x) mod (2^31 - 1)
+         * without overflowing 31 bits:
+         *      (2^31 - 1) = 127773 * (7^5) + 2836
+         * From "Random number generators: good ones are hard to find",
+         * Park and Miller, Communications of the ACM, vol. 31, no. 10,
+         * October 1988, p. 1195.
+         */
+            long hi, lo, x;
+
+            /* Transform to [1, 0x7ffffffe] range. */
+            x = (*ctx % 0x7ffffffe) + 1;
+            hi = x / 127773;
+            lo = x % 127773;
+            x = 16807 * lo - 2836 * hi;
+            if (x < 0)
+                x += 0x7fffffff;
+            /* Transform to [0, 0x7ffffffd] range. */
+            x--;
+            *ctx = x;
+            return (x);
+        }
+
+        unsigned long rand_next = 1;
+
+        int rand(void)
+        {
+            return (do_rand(&rand_next));
+        }
+
+
 void
 scheduler(void)
 {
@@ -451,7 +494,7 @@ scheduler(void)
   for(;;){
     // Avoid deadlock by ensuring that devices can interrupt.
     intr_on();
-
+#ifdef RR
     for(p = proc; p < &proc[NPROC]; p++) {
       acquire(&p->lock);
       if(p->state == RUNNABLE) {
@@ -468,6 +511,88 @@ scheduler(void)
       }
       release(&p->lock);
     }
+#endif
+#ifdef FCFS
+
+    struct proc *currentProc = NULL; // this is the optimal process found
+    uint earliest = 4294967295; // setting to maximum possible value of unsigned int
+    for(p = proc; p < &proc[NPROC]; p++){
+         acquire(&p->lock);
+         if(p->invokeTime < earliest){
+            if(p->state == RUNNABLE){
+                currentProc = p;
+                earliest = p->invokeTime;
+            }
+         }
+    release(&p->lock);
+    }
+
+    if(currentProc != NULL){
+        acquire(&currentProc->lock);
+      if(currentProc->state == RUNNABLE) {
+
+        currentProc->state = RUNNING;
+        c->proc = currentProc;
+        swtch(&c->context, &currentProc->context);
+
+        c->proc = 0;
+      }
+      release(&currentProc->lock);
+    }
+
+#endif
+#ifdef LBS
+    runLBS:
+    int totalTickets = 0;
+    struct proc* procArray[NPROC];
+    int idx = 0;
+    int prefixSum[NPROC] = {0};
+
+
+
+    for(p = proc; p < &proc[NPROC]; p++){
+        acquire(&p->lock);
+        if(p->state == RUNNABLE){
+            totalTickets += p->tickets;
+            if(idx == 0){
+                prefixSum[0] += p->tickets;
+            }
+            else {
+                prefixSum[idx] += (p->tickets + prefixSum[idx - 1]);
+            }
+
+            procArray[idx++] = p;
+        }
+        release(&p->lock);
+    }
+
+    int randomDraw = rand() % totalTickets;
+    randomDraw++;
+
+    for(int i = 0; i < NPROC - 1; i++){
+        if(prefixSum[i] >= randomDraw){
+
+            acquire(&procArray[i]->lock);
+            if(procArray[i]->state == RUNNABLE){
+                procArray[i]->state = RUNNING;
+                c->proc = procArray[i];
+                swtch(&c->context, &procArray[i]->context);
+                c->proc = 0;
+
+            } else {
+                release(&procArray[i]->lock);
+                goto runLBS;
+            }
+            release(&procArray[i]->lock);g
+
+        }
+
+    }
+
+
+
+#endif
+
   }
 }
 

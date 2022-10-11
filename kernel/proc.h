@@ -104,4 +104,7 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+
+  uint invokeTime; // stores the time when the proces was issued, for FCFS
+  uint tickets; // stores the number of tickets the process has, for LBS
 };
