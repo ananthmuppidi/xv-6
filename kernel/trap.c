@@ -6,6 +6,8 @@
 #include "proc.h"
 #include "defs.h"
 
+
+
 struct spinlock tickslock;
 uint ticks;
 
@@ -97,7 +99,7 @@ usertrap(void)
 
   #ifdef LBS
   if(which_dev == 2)
-    yield();
+    yield(); // each time slice will be allocated at random from a ticket draw
   #endif
 
   #ifdef MLFQ

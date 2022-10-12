@@ -17,6 +17,14 @@ struct proc *initproc;
 int nextpid = 1;
 struct spinlock pid_lock;
 
+int max(int a, int b){
+    return a > b ? a : b;
+};
+
+int min(int a, int b){
+    return a < b ? a : b;
+};
+
 extern void forkret(void);
 static void freeproc(struct proc *p);
 
@@ -153,7 +161,9 @@ found:
   p->invokeTime = ticks;
 
   p->priority = 60;
-
+  p->sleeping = 0;
+  p->running = 0;
+  p->scheduled = 0;
 
 
   return p;
@@ -546,7 +556,6 @@ scheduler(void)
 
 #endif
 #ifdef LBS
-    runLBS:
     int totalTickets = 0;
     struct proc* procArray[NPROC];
     int idx = 0;
@@ -583,9 +592,6 @@ scheduler(void)
                 swtch(&c->context, &procArray[i]->context);
                 c->proc = 0;
 
-            } else {
-                release(&procArray[i]->lock);
-                goto runLBS;
             }
             release(&procArray[i]->lock);
 
@@ -594,12 +600,74 @@ scheduler(void)
     }
 #endif
 #ifdef PBS
-    p = myproc();
-    if(p->state == RUNNING){
-        printf("");
-    }
-#endif
 
+    uint lowestDP = 101; // this is the process with the highest priority number
+    struct proc* chosenProc = NULL;
+    for(p = proc; p < &proc[NPROC]; p++){
+
+        acquire(&p->lock);
+        if(p->state == RUNNABLE){
+
+
+        uint64 niceness;
+        uint64 dynamicPriority;
+
+        if(p->sleeping + p->running == 0){
+            niceness = 5;
+
+        } else {
+            niceness = (p->sleeping / (p->sleeping + p->running)) * 10;
+
+        }
+        dynamicPriority = max(0, min(p->priority - niceness + 5, 100));
+        if(lowestDP > dynamicPriority){
+            lowestDP = dynamicPriority;
+            chosenProc = p;
+        }
+        if(lowestDP == dynamicPriority){
+                if(chosenProc->scheduled > p->scheduled){
+                    chosenProc = p;
+                }
+                 else if(chosenProc->scheduled == p->scheduled){
+                    if(chosenProc->invokeTime < p->invokeTime){ // lower start time is scheduled further
+                        chosenProc = p;
+                    }
+                }
+        }
+    }
+     release(&p->lock);
+    }
+
+    if(chosenProc){ // if we managed to find a process
+        acquire(&chosenProc->lock);
+        if(chosenProc->state == RUNNABLE){ // if the process hasnt been scheduled by another CPU
+             chosenProc->state = RUNNING;
+             c->proc = chosenProc;
+             chosenProc->invokeTime = ticks;
+             chosenProc->sleeping = 0;
+             chosenProc->running = 0;
+             chosenProc->scheduled++;
+             swtch(&c->context, &chosenProc->context);
+             c->proc = 0; // since this is a non preemptive scheduler (except when priority changes), keep running it until the CPU frees
+
+        }
+        release(&chosenProc->lock);
+
+    }
+
+
+
+#endif
+/*
+ * How to implement MLFQ
+ *  1) We are emulating the functionality of a queue without actually making a queue. (this takes more computational power but makes the implementation simpler and removes the possibilty of running into queueing / memory/ segmentation errors).
+ *  2) We create fields in each process to represent the queue position. This helps us keep track of the priority. Also, we create fields in the process to hold the number of ticks it had taken up.
+ *  3) There are 4 queues numbered 1 to 5
+ *  4) When a new process is created, assign it queue 1 which is highest priority.
+ *  5) In trap.c, at each clock interrupt,  we update the ticks of the current running process, if there is a current running process. If it crosses the assigned time slice, we "shift" it to a lower priority queue.
+ *  6) At each clock interrupt, we also check if there is a new process that is of a higher priority than the current process (by iterating the processes array). If we find such a process, we preempt the current process by calling yield()
+ *  7) If there are no process in the first 4 queues, we construct an array of all the lower priority process and run them in round robin, while checking at each interrput for a new process/
+ *
 
 }
   }
@@ -819,7 +887,7 @@ int
 set_priority(int new_priority, int pid)
 {
 
-    printf("In set_priority, pid: %d , priority: %d\n", pid, new_priority);
+
 
     struct proc *p;
     uint oldPriority = 0;
@@ -831,12 +899,16 @@ set_priority(int new_priority, int pid)
         oldPriority = p->priority;
         p->priority = new_priority;
 
-        if(new_priority < oldPriority){
-            yield();
-        }
+        p->running = 0;
+        p->sleeping = 0;
+
+
       }
       release(&p->lock);
     }
+    if(new_priority < oldPriority){
+            yield();
+        }
     return oldPriority; // returns -1 if the process with that pid was not found and the old priority if the process was found.
 }
 // Print a process listing to console.  For debugging.

@@ -1,4 +1,7 @@
 // Saved registers for kernel context switches.
+
+
+
 struct context {
   uint64 ra;
   uint64 sp;
@@ -109,9 +112,11 @@ struct proc {
 
   uint tickets; // stores the number of tickets the process has, for LBS
 
-  uint priority;
-  uint sleeping;
-  uint running;
-  uint scheduled;
+  uint priority; // stores the static priority, for PBS
+  uint sleeping; // stores the number of ticks the process was sleeping for, for PBS
+  uint running; // stores the number of ticks the process was running for, for PBS
+  uint scheduled; // stores how many times the process was scheduled, for PBS
 
 };
+
+extern struct proc proc[NPROC];
