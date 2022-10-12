@@ -93,9 +93,46 @@ sys_uptime(void)
 uint64
 sys_settickets(void)
 {
-    struct proc *currentProc = myproc();
-    int temp;
-    argint(0, &temp);
-    currentProc->tickets = temp;
-    return 0;
+
+    int arg;
+    argint(0, &arg);
+
+    return settickets(arg);
 }
+
+uint64
+sys_set_priority(void){
+
+    int pid;
+    int prioritySet;
+
+    argint(0, &prioritySet);
+    argint(1, &pid);
+
+
+    return set_priority(prioritySet, pid);
+}
+
+
+
+/*
+ *     for(int i = 0; i < NPROC; i++){
+        acquire(proc[i]->lock);
+        if(proc[i]->pid == pid){
+            currentProc = proc[i];
+             int temp;
+             temp = currentProc->priority;
+             int temparg;
+             argint(0, &temparg);
+             currentProc->priority = temparg;
+             release(proc[i]->lock);
+            if(temp > temparg ){
+               yield();
+            }
+             return temp;
+        }
+        release(proc[i]->lock);
+    }
+
+ *
+ */

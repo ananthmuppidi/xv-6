@@ -22,8 +22,10 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
-int settickets(int number);
 void yield(void);
+int settickets(int number);
+int set_priority(int new_priority, int pid);
+
 
 // ulib.c
 int stat(const char*, struct stat*);

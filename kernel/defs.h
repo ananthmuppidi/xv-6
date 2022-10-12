@@ -141,6 +141,7 @@ int             fetchstr(uint64, char*, int);
 int             fetchaddr(uint64, uint64*);
 void            syscall();
 int             settickets(int number);
+int             set_priority(int new_priority, int pid);
 
 // trap.c
 extern uint     ticks;

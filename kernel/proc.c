@@ -152,6 +152,10 @@ found:
   p->tickets = 1;
   p->invokeTime = ticks;
 
+  p->priority = 60;
+
+
+
   return p;
 }
 
@@ -583,18 +587,22 @@ scheduler(void)
                 release(&procArray[i]->lock);
                 goto runLBS;
             }
-            release(&procArray[i]->lock);g
+            release(&procArray[i]->lock);
 
         }
 
     }
-
-
-
+#endif
+#ifdef PBS
+    p = myproc();
+    if(p->state == RUNNING){
+        printf("");
+    }
 #endif
 
-  }
+
 }
+  }
 
 // Switch to scheduler.  Must hold only p->lock
 // and have changed proc->state. Saves and restores
@@ -777,6 +785,60 @@ either_copyin(void *dst, int user_src, uint64 src, uint64 len)
   }
 }
 
+
+int
+settickets(int number)
+{
+            struct proc *p = myproc();
+            p->tickets = number;
+            return 1;
+            printf("%d ", number);
+}
+
+/*
+ *     for(p = proc; p < &proc[NPROC]; p++) {
+      acquire(&p->lock);
+      if(p->state == RUNNABLE) {
+        // Switch to chosen process.  It is the process's job
+        // to release its lock and then reacquire it
+        // before jumping back to us.
+        p->state = RUNNING;
+        c->proc = p;
+        swtch(&c->context, &p->context);
+
+        // Process is done running for now.
+        // It should have changed its p->state before coming back.
+        c->proc = 0;
+      }
+      release(&p->lock);
+    }
+ */
+
+
+int
+set_priority(int new_priority, int pid)
+{
+
+    printf("In set_priority, pid: %d , priority: %d\n", pid, new_priority);
+
+    struct proc *p;
+    uint oldPriority = 0;
+
+    for(p = proc; p < &proc[NPROC]; p++) {
+      acquire(&p->lock);
+      if(p->pid == pid) {
+
+        oldPriority = p->priority;
+        p->priority = new_priority;
+
+        if(new_priority < oldPriority){
+            yield();
+        }
+      }
+      release(&p->lock);
+    }
+    return oldPriority; // returns -1 if the process with that pid was not found and the old priority if the process was found.
+}
 // Print a process listing to console.  For debugging.
 // Runs when user types ^P on console.
 // No lock to avoid wedging a stuck machine further.

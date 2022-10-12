@@ -106,5 +106,12 @@ struct proc {
   char name[16];               // Process name (debugging)
 
   uint invokeTime; // stores the time when the proces was issued, for FCFS
+
   uint tickets; // stores the number of tickets the process has, for LBS
+
+  uint priority;
+  uint sleeping;
+  uint running;
+  uint scheduled;
+
 };

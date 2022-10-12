@@ -193,6 +193,19 @@ clockintr()
   ticks++;
   wakeup(&ticks);
   release(&tickslock);
+  #ifdef PBS
+  struct proc* p;
+ for(p = proc; p < &proc[NPROC]; p++) {
+      acquire(&p->lock);
+      if(p->state == RUNNING) {
+          p->running++;
+      }
+      if(p->state == SLEEPING){
+          p->sleeping++;
+      }
+      release(&p->lock);
+    }
+  #endif
 }
 
 // check if it's an external interrupt or software interrupt,
