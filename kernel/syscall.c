@@ -103,6 +103,7 @@ extern uint64 sys_mkdir(void);
 extern uint64 sys_close(void);
 extern uint64 sys_settickets(void);
 extern uint64 sys_set_priority(void);
+extern uint64 sys_waitx(void); // tut
 
 // An array mapping syscall numbers from syscall.h
 // to the function that handles the system call.
@@ -128,6 +129,7 @@ static uint64 (*syscalls[])(void) = {
 [SYS_link]    sys_link,
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
+[SYS_waitx] sys_waitx, // tut
 [SYS_settickets] sys_settickets, // this is a system call used to assign tickets to a process in Lottery Based Scheduling
 [SYS_set_priority] sys_set_priority,
 };

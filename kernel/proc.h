@@ -117,6 +117,19 @@ struct proc {
   uint running; // stores the number of ticks the process was running for, for PBS
   uint scheduled; // stores how many times the process was scheduled, for PBS
 
+  uint queue; // stores the level that this queue is in
+  uint queuePos; // stores the position in the queue (by means of ticks)
+  uint age; // stores the age, that is the amount of time for which it is
+  uint tickCount; // this is the count of the ticks that it has taken up
+
+  // code taken from tuts
+
+  uint rtime;                   // How long the process ran for
+  uint ctime;                   // When was the process created 
+  uint etime;                   // When did the process exited
+
+  // for anything that is not currently running but in any queue, we need to increase the age, and once it crosess AGETICKS, we
+
 };
 
 extern struct proc proc[NPROC];

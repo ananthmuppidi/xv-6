@@ -38,4 +38,4 @@ entry("sleep");
 entry("uptime");
 entry("settickets");
 entry("set_priority");
-
+entry("waitx") # taken from tut
